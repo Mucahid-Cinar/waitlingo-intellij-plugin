@@ -1,0 +1,49 @@
+<idea-plugin>
+    <id>io.github.mucahidcinar.waitlingo</id>
+    <name>WaitLingo</name>
+
+    <vendor email="your-email@example.com" url="https://github.com/mucahidcinar">
+        Mücahid ÇINAR
+    </vendor>
+
+    <description><![CDATA[
+        <p>
+            WaitLingo helps you learn English while working in your IDE.
+        </p>
+        <p>
+            It shows short English-Turkish word pairs in the status bar and lets you open
+            a lightweight popup with example sentences.
+        </p>
+        <p>
+            The goal is to turn small waiting moments in the IDE into calm, low-friction
+            vocabulary practice.
+        </p>
+        <ul>
+            <li>English-Turkish vocabulary cards</li>
+            <li>Status bar word rotation</li>
+            <li>Two example sentences for every word</li>
+            <li>Lightweight popup UI</li>
+            <li>Works fully offline</li>
+            <li>No telemetry</li>
+            <li>No account required</li>
+            <li>No network request</li>
+        </ul>
+    ]]></description>
+
+    <change-notes><![CDATA[
+        <p>Initial release.</p>
+        <ul>
+            <li>Added English-Turkish vocabulary rotation in the IDE status bar.</li>
+            <li>Added popup cards with translations and example sentences.</li>
+            <li>Added offline vocabulary bundle.</li>
+        </ul>
+    ]]></change-notes>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <statusBarWidgetFactory
+                id="WaitLingo"
+                implementation="io.github.mucahidcinar.waitlingo.WaitLingoWidgetFactory"/>
+    </extensions>
+</idea-plugin>

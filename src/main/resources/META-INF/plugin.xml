@@ -31,11 +31,19 @@
     ]]></description>
 
     <change-notes><![CDATA[
-        <p>Initial release.</p>
+        <h3>WaitLingo 0.1.2</h3>
+        <p>A major learning-experience update focused on calm, context-aware micro-learning while you code.</p>
         <ul>
-            <li>Added English-Turkish vocabulary rotation in the IDE status bar.</li>
-            <li>Added popup cards with translations and example sentences.</li>
-            <li>Added offline vocabulary bundle.</li>
+            <li>Added persistent learning progress and spaced repetition.</li>
+            <li>Added English-to-Turkish and Turkish-to-English practice directions.</li>
+            <li>Added CEFR, topic, and developer content filters.</li>
+            <li>Added Git, backend, testing, DevOps, database, and frontend phrase packs.</li>
+            <li>Added context-aware vocabulary based on the active source file.</li>
+            <li>Added adaptive rotation for coding, building, debugging, and indexing.</li>
+            <li>Added favorites, word pinning, word of the day, snooze, and hide-for-today actions.</li>
+            <li>Added searchable Tool Window with daily and weekly progress.</li>
+            <li>Added offline pronunciation and personal CSV/JSON vocabulary import.</li>
+            <li>Improved accessibility, compact mode, animation, settings, and documentation.</li>
         </ul>
     ]]></change-notes>
 

@@ -30,7 +30,7 @@ public class WaitLingoWidgetFactory implements StatusBarWidgetFactory {
 
     @Override
     public @NotNull StatusBarWidget createWidget(@NotNull Project project) {
-        return new WaitLingoWidget();
+        return new WaitLingoWidget(project);
     }
 
     @Override

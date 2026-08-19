@@ -2,9 +2,14 @@ package io.github.mucahidcinar.waitlingo.ui;
 
 import com.intellij.openapi.ui.popup.JBPopup;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
+import com.intellij.openapi.ui.popup.JBPopupListener;
+import com.intellij.openapi.ui.popup.LightweightWindowEvent;
 import com.intellij.ui.JBColor;
 import com.intellij.util.ui.JBUI;
 import io.github.mucahidcinar.waitlingo.vocabulary.WordEntry;
+import io.github.mucahidcinar.waitlingo.settings.WaitLingoSettings;
+import io.github.mucahidcinar.waitlingo.audio.PronunciationService;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -24,7 +29,10 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 public final class WordDetailsPopup {
 
@@ -37,8 +45,13 @@ public final class WordDetailsPopup {
     public static void show(
             WordEntry entry,
             Component owner,
-            Runnable knowWordAction,
-            Runnable nextWordAction
+            Consumer<WordEntry> knowWordAction,
+            Runnable nextWordAction,
+            Consumer<WordEntry> againAction,
+            Consumer<WordEntry> favoriteAction,
+            WaitLingoSettings.Data settings,
+            List<WordEntry> wordPool,
+            Runnable popupClosedAction
     ) {
         AtomicReference<JBPopup> popupRef = new AtomicReference<>();
 
@@ -51,9 +64,10 @@ public final class WordDetailsPopup {
         root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
         root.setBorder(JBUI.Borders.empty(18, 20, 18, 20));
 
-        root.add(buildHeader(entry));
+        boolean reverse = WaitLingoSettings.TR_TO_EN.equals(settings.direction);
+        root.add(buildHeader(entry, favoriteAction, reverse));
         root.add(Box.createVerticalStrut(6));
-        root.add(buildTranslation(entry));
+        root.add(buildTranslation(entry, reverse));
         root.add(Box.createVerticalStrut(16));
         root.add(buildExampleCard(entry));
         root.add(Box.createVerticalStrut(12));
@@ -65,7 +79,7 @@ public final class WordDetailsPopup {
             root.add(Box.createVerticalStrut(16));
         }
 
-        root.add(buildFooter(popupRef, knowWordAction, nextWordAction));
+        root.add(buildFooter(popupRef, entry, knowWordAction, nextWordAction, againAction));
 
         int preferredHeight = Math.max(340, root.getPreferredSize().height);
         root.setPreferredSize(new Dimension(POPUP_WIDTH, preferredHeight));
@@ -80,34 +94,91 @@ public final class WordDetailsPopup {
                 .createPopup();
 
         popupRef.set(popup);
+        popup.addListener(new JBPopupListener() {
+            @Override public void onClosed(@NotNull LightweightWindowEvent event) { popupClosedAction.run(); }
+        });
         popup.showUnderneathOf(owner);
     }
 
-    private static JPanel buildHeader(WordEntry entry) {
+    private static JPanel buildHeader(WordEntry entry, Consumer<WordEntry> favoriteAction, boolean reverse) {
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
         header.setAlignmentX(Component.LEFT_ALIGNMENT);
         header.setMaximumSize(new Dimension(CONTENT_WIDTH, 42));
 
-        JLabel word = new JLabel(entry.getWord());
+        JLabel word = new JLabel(reverse ? entry.getTranslation("tr") : entry.getWord());
         word.setFont(word.getFont().deriveFont(Font.BOLD, 25f));
         word.setForeground(fgStrong());
 
         JLabel level = new PillLabel(entry.getLevel().isBlank() ? "WORD" : entry.getLevel(), true);
 
         header.add(word, BorderLayout.WEST);
-        header.add(level, BorderLayout.EAST);
+        JButton favorite = new JButton("★");
+        favorite.setToolTipText("Add/remove favorite");
+        favorite.setFocusable(true);
+        favorite.addActionListener(event -> favoriteAction.accept(entry));
+        JButton speak = new JButton("🔊");
+        speak.setToolTipText("Pronounce using offline system voice");
+        speak.setFocusable(true);
+        speak.addActionListener(event -> PronunciationService.speak(entry.getWord()));
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
+        actions.setOpaque(false);
+        actions.add(speak);
+        actions.add(favorite);
+        actions.add(level);
+        header.add(actions, BorderLayout.EAST);
 
         return header;
     }
 
-    private static JLabel buildTranslation(WordEntry entry) {
-        JLabel translation = new JLabel(entry.getTranslation());
+    private static JLabel buildTranslation(WordEntry entry, boolean reverse) {
+        String value = reverse ? entry.getWord() : entry.getTranslation("tr");
+        JLabel translation = new JLabel(value);
         translation.setAlignmentX(Component.LEFT_ALIGNMENT);
         translation.setFont(translation.getFont().deriveFont(Font.PLAIN, 15f));
         translation.setForeground(fgMuted());
         translation.setMaximumSize(new Dimension(CONTENT_WIDTH, 24));
         return translation;
+    }
+
+    private static JPanel buildQuiz(WordEntry entry, List<WordEntry> pool, boolean reverse,
+                                    Consumer<WordEntry> correctAction, Consumer<WordEntry> wrongAction,
+                                    AtomicReference<JBPopup> popupRef) {
+        JPanel quiz = new RoundedPanel(cardBg(), border(), 14);
+        quiz.setLayout(new BoxLayout(quiz, BoxLayout.Y_AXIS));
+        quiz.setBorder(JBUI.Borders.empty(10, 12));
+        quiz.setAlignmentX(Component.LEFT_ALIGNMENT);
+        quiz.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
+        quiz.add(sectionTitle("QUICK QUIZ — choose the meaning"));
+        quiz.add(Box.createVerticalStrut(6));
+        List<WordEntry> choices = new ArrayList<>();
+        choices.add(entry);
+        for (WordEntry candidate : pool) {
+            if (choices.size() >= 4) break;
+            if (!candidate.id().equals(entry.id())) choices.add(candidate);
+        }
+        Collections.shuffle(choices);
+        for (WordEntry choice : choices) {
+            String answer = reverse ? choice.getWord() : choice.getTranslation("tr");
+            JButton button = new JButton(answer);
+            button.setFocusable(true);
+            button.setAlignmentX(Component.LEFT_ALIGNMENT);
+            button.addActionListener(event -> {
+                quiz.setEnabled(false);
+                if (choice.id().equals(entry.id())) {
+                    button.setText("✓ " + answer);
+                    correctAction.accept(entry);
+                } else {
+                    button.setText("✕ " + answer);
+                    wrongAction.accept(entry);
+                }
+                JBPopup popup = popupRef.get();
+                if (popup != null) popup.cancel();
+            });
+            quiz.add(button);
+            quiz.add(Box.createVerticalStrut(4));
+        }
+        return quiz;
     }
 
     private static JPanel buildExampleCard(WordEntry entry) {
@@ -165,8 +236,10 @@ public final class WordDetailsPopup {
 
     private static JPanel buildFooter(
             AtomicReference<JBPopup> popupRef,
-            Runnable knowWordAction,
-            Runnable nextWordAction
+            WordEntry entry,
+            Consumer<WordEntry> knowWordAction,
+            Runnable nextWordAction,
+            Consumer<WordEntry> againAction
     ) {
         JPanel footer = new JPanel();
         footer.setOpaque(false);
@@ -184,15 +257,22 @@ public final class WordDetailsPopup {
         buttonsRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         buttonsRow.setMaximumSize(new Dimension(CONTENT_WIDTH, 38));
 
-        JButton knowButton = new PillButton("I know this", false);
-        JButton nextButton = new PillButton("Next word", true);
+        JButton againButton = new PillButton("Again soon", false);
+        JButton nextButton = new PillButton("Next", false);
+        JButton knowButton = new PillButton("Got it", true);
+
+        againButton.addActionListener(event -> {
+            JBPopup popup = popupRef.get();
+            if (popup != null) popup.cancel();
+            againAction.accept(entry);
+        });
 
         knowButton.addActionListener(event -> {
             JBPopup popup = popupRef.get();
             if (popup != null) {
                 popup.cancel();
             }
-            knowWordAction.run();
+            knowWordAction.accept(entry);
         });
 
         nextButton.addActionListener(event -> {
@@ -203,8 +283,9 @@ public final class WordDetailsPopup {
             nextWordAction.run();
         });
 
-        buttonsRow.add(knowButton);
+        buttonsRow.add(againButton);
         buttonsRow.add(nextButton);
+        buttonsRow.add(knowButton);
 
         footer.add(hint);
         footer.add(Box.createVerticalStrut(10));
@@ -399,12 +480,12 @@ public final class WordDetailsPopup {
             setContentAreaFilled(false);
             setBorderPainted(false);
             setFocusPainted(false);
-            setFocusable(false);
+            setFocusable(true);
             setRolloverEnabled(true);
             setFont(getFont().deriveFont(primary ? Font.BOLD : Font.PLAIN, 12f));
             setForeground(primary ? buttonPrimaryText() : buttonSecondaryText());
             setBorder(JBUI.Borders.empty(7, 16));
-            setPreferredSize(new Dimension(primary ? 116 : 120, 34));
+            setPreferredSize(new Dimension(primary ? 96 : 104, 34));
         }
 
         @Override

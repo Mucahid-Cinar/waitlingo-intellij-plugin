@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "io.github.mucahidcinar"
-version = "0.1.0"
+version = "0.1.1"
 
 repositories {
     mavenCentral()
@@ -28,7 +28,7 @@ tasks {
 
     patchPluginXml {
         sinceBuild.set("232")
-        untilBuild.set("242.*")
+        untilBuild.set("261.*")
     }
 
     signPlugin {
@@ -43,5 +43,6 @@ tasks {
 
     dependencies {
         implementation("com.fasterxml.jackson.core:jackson-databind:2.17.2")
+        testImplementation("junit:junit:4.13.2")
     }
 }

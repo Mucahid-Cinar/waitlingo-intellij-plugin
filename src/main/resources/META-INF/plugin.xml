@@ -2,7 +2,7 @@
     <id>io.github.mucahidcinar.waitlingo</id>
     <name>WaitLingo</name>
 
-    <vendor email="your-email@example.com" url="https://github.com/mucahidcinar">
+    <vendor url="https://github.com/mucahidcinar">
         Mücahid ÇINAR
     </vendor>
 
@@ -45,5 +45,25 @@
         <statusBarWidgetFactory
                 id="WaitLingo"
                 implementation="io.github.mucahidcinar.waitlingo.WaitLingoWidgetFactory"/>
+        <applicationConfigurable
+                parentId="tools"
+                id="io.github.mucahidcinar.waitlingo.settings"
+                displayName="WaitLingo"
+                instance="io.github.mucahidcinar.waitlingo.settings.WaitLingoConfigurable"/>
+        <toolWindow id="WaitLingo"
+                    anchor="right"
+                    icon="/META-INF/pluginIcon.svg"
+                    factoryClass="io.github.mucahidcinar.waitlingo.toolwindow.WaitLingoToolWindowFactory"/>
+        <notificationGroup id="WaitLingo Progress" displayType="BALLOON" isLogByDefault="true"/>
     </extensions>
+
+    <actions>
+        <action id="WaitLingo.NextWord"
+                class="io.github.mucahidcinar.waitlingo.actions.NextWordAction"
+                text="WaitLingo: Show Next Word"
+                description="Show the next WaitLingo vocabulary card">
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt W"/>
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+    </actions>
 </idea-plugin>

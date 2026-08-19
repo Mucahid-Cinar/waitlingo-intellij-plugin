@@ -3,12 +3,15 @@ package io.github.mucahidcinar.waitlingo.vocabulary;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class WordEntry {
 
     private String word;
     private String translation;
+    private Map<String, String> translations;
     private List<String> examples;
     private String category;
     private String level;
@@ -41,6 +44,18 @@ public class WordEntry {
         return translation;
     }
 
+    public Map<String, String> getTranslations() {
+        Map<String, String> values = translations == null ? new LinkedHashMap<>() : new LinkedHashMap<>(translations);
+        if (translation != null && !translation.isBlank()) values.putIfAbsent("tr", translation);
+        return values;
+    }
+
+    public void setTranslations(Map<String, String> translations) { this.translations = translations; }
+
+    public String getTranslation(String languageCode) {
+        return getTranslations().getOrDefault(languageCode, translation == null ? "" : translation);
+    }
+
     public List<String> getExamples() {
         return examples == null ? List.of() : examples;
     }
@@ -67,4 +82,6 @@ public class WordEntry {
     public String displayText() {
         return word + " — " + translation;
     }
+
+    public String id() { return word == null ? "" : word.trim().toLowerCase(); }
 }

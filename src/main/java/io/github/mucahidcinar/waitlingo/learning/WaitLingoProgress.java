@@ -33,6 +33,8 @@ public final class WaitLingoProgress implements PersistentStateComponent<WaitLin
 
     public static final class Data {
         public Map<String, WordProgress> words = new HashMap<>();
+        public Map<String, String> personalTranslations = new HashMap<>();
+        public Map<String, String> personalExamples = new HashMap<>();
         public String lastPracticeDate = "";
         public int streak;
         public int todaySeen;
@@ -60,6 +62,8 @@ public final class WaitLingoProgress implements PersistentStateComponent<WaitLin
     @Override public void loadState(@NotNull Data state) {
         data = state;
         if (data.words == null) data.words = new HashMap<>();
+        if (data.personalTranslations == null) data.personalTranslations = new HashMap<>();
+        if (data.personalExamples == null) data.personalExamples = new HashMap<>();
         if (data.hiddenToday == null) data.hiddenToday = new HashSet<>();
     }
 
@@ -68,12 +72,27 @@ public final class WaitLingoProgress implements PersistentStateComponent<WaitLin
         return data.words.computeIfAbsent(id, ignored -> new WordProgress());
     }
 
+    public void savePersonalWord(String word, String translation, String example) {
+        String id = word.trim().toLowerCase(java.util.Locale.ROOT);
+        data.personalTranslations.put(id, translation.trim());
+        data.personalExamples.put(id, example == null ? "" : example.trim());
+    }
+
+    public void markFavorite(String id) {
+        progress(id).favorite = true;
+    }
+
     public void recordSeen(String id) {
         WordProgress progress = progress(id);
         progress.lastSeenAt = System.currentTimeMillis();
         data.todaySeen++;
         touchWeek();
         data.weekSeen++;
+    }
+
+    public boolean hasSeen(String id) {
+        WordProgress progress = data.words.get(id);
+        return progress != null && progress.lastSeenAt > 0;
     }
 
     public void recordKnown(String id) {

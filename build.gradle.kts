@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "io.github.mucahidcinar"
-version = "0.1.2"
+version = "0.1.3"
 
 repositories {
     mavenCentral()
@@ -15,6 +15,7 @@ repositories {
 intellij {
     version.set("2023.2.6")
     type.set("IC") // Target IDE Platform
+    updateSinceUntilBuild.set(false)
 
     plugins.set(listOf(/* Plugin Dependencies */))
 }
@@ -28,7 +29,14 @@ tasks {
 
     patchPluginXml {
         sinceBuild.set("232")
-        untilBuild.set("261.*")
+    }
+
+    runPluginVerifier {
+        val verifierIdePath = providers.gradleProperty("verifierIdePath")
+        if (verifierIdePath.isPresent) {
+            ideVersions.set(emptyList())
+            localPaths.set(listOf(file(verifierIdePath.get())))
+        }
     }
 
     signPlugin {

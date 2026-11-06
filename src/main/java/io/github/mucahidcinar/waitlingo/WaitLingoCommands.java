@@ -5,4 +5,5 @@ import com.intellij.util.messages.Topic;
 public interface WaitLingoCommands {
     Topic<WaitLingoCommands> TOPIC = Topic.create("WaitLingo commands", WaitLingoCommands.class);
     void nextWord();
+    void showWord(String id);
 }

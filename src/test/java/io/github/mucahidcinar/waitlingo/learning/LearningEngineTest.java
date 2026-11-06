@@ -39,4 +39,29 @@ public class LearningEngineTest {
                 word("deploy", "B1", "developer", "devops")), settings);
         assertEquals(List.of("mock"), filtered.stream().map(WordEntry::getWord).toList());
     }
+
+    @Test public void keepsCurrentWordWhenNothingElseIsDue() {
+        WaitLingoProgress progress = new WaitLingoProgress();
+        WordEntry current = word("fallback", "B1", "developer");
+        WordEntry scheduled = word("retry", "B1", "developer");
+        progress.recordKnown(scheduled.id());
+        assertEquals(current, LearningEngine.next(List.of(current, scheduled), current, progress));
+    }
+
+    @Test public void selectsOnlyWordsThatAreDue() {
+        WaitLingoProgress progress = new WaitLingoProgress();
+        WordEntry due = word("fallback", "B1", "developer");
+        WordEntry scheduled = word("retry", "B1", "developer");
+        progress.recordKnown(scheduled.id());
+        assertEquals(due, LearningEngine.next(List.of(due, scheduled), null, progress));
+    }
+
+    @Test public void keepsPersonalWordsVisibleAcrossFilters() {
+        WaitLingoSettings.Data settings = new WaitLingoSettings.Data();
+        settings.levels = List.of("C2");
+        settings.contentPack = "TESTING";
+        WordEntry personal = word("fallback", "", "personal", "developer");
+        WordEntry other = word("mock", "C2", "testing");
+        assertEquals(List.of(personal, other), LearningEngine.filter(List.of(personal, other), settings));
+    }
 }

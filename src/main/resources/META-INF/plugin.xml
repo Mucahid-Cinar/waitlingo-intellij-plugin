@@ -1,6 +1,7 @@
 <idea-plugin>
     <id>io.github.mucahidcinar.waitlingo</id>
     <name>WaitLingo</name>
+    <idea-version since-build="232"/>
 
     <vendor url="https://github.com/mucahidcinar">
         Mücahid ÇINAR
@@ -31,19 +32,14 @@
     ]]></description>
 
     <change-notes><![CDATA[
-        <h3>WaitLingo 0.1.2</h3>
-        <p>A major learning-experience update focused on calm, context-aware micro-learning while you code.</p>
+        <h3>WaitLingo 0.1.3</h3>
+        <p>Practice developer vocabulary while coding, with better recall and IDE compatibility.</p>
         <ul>
-            <li>Added persistent learning progress and spaced repetition.</li>
-            <li>Added English-to-Turkish and Turkish-to-English practice directions.</li>
-            <li>Added CEFR, topic, and developer content filters.</li>
-            <li>Added Git, backend, testing, DevOps, database, and frontend phrase packs.</li>
-            <li>Added context-aware vocabulary based on the active source file.</li>
-            <li>Added adaptive rotation for coding, building, debugging, and indexing.</li>
-            <li>Added favorites, word pinning, word of the day, snooze, and hide-for-today actions.</li>
-            <li>Added searchable Tool Window with daily and weekly progress.</li>
-            <li>Added offline pronunciation and personal CSV/JSON vocabulary import.</li>
-            <li>Improved accessibility, compact mode, animation, settings, and documentation.</li>
+            <li>Added a recall step that hides the meaning after a word has been opened once.</li>
+            <li>Added an editor context action to learn selected terms and save personal words locally.</li>
+            <li>Improved spaced repetition so words scheduled for later are not rotated early.</li>
+            <li>Fixed a status bar painting crash during the word transition animation.</li>
+            <li>Verified compatibility with IntelliJ IDEA 2023.2.6 and 2026.2.3.</li>
         </ul>
     ]]></change-notes>
 
@@ -66,6 +62,12 @@
     </extensions>
 
     <actions>
+        <action id="WaitLingo.LearnSelectedWord"
+                class="io.github.mucahidcinar.waitlingo.actions.LearnSelectedWordAction"
+                text="Learn with WaitLingo"
+                description="Add the selected term to WaitLingo and practice it later">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
         <action id="WaitLingo.NextWord"
                 class="io.github.mucahidcinar.waitlingo.actions.NextWordAction"
                 text="WaitLingo: Show Next Word"

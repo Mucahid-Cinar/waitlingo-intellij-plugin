@@ -23,10 +23,13 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.BorderLayout;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 public final class WaitLingoToolWindowFactory implements ToolWindowFactory {
     @Override public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
-        List<WordEntry> words = VocabularyService.loadDefaultWords();
+        AtomicReference<List<WordEntry>> words = new AtomicReference<>(VocabularyService.loadDefaultWords());
+        AtomicInteger personalWordCount = new AtomicInteger(WaitLingoProgress.getInstance().getState().personalTranslations.size());
         WaitLingoProgress.Data progress = WaitLingoProgress.getInstance().getState();
         JPanel root = new JPanel(new BorderLayout(0, 10));
         root.setBorder(JBUI.Borders.empty(12));
@@ -34,7 +37,7 @@ public final class WaitLingoToolWindowFactory implements ToolWindowFactory {
         JPanel summary = new JPanel(new BorderLayout(5, 5));
         JBLabel summaryLabel = new JBLabel();
         summary.add(summaryLabel, BorderLayout.NORTH);
-        JProgressBar bar = new JProgressBar(0, words.size());
+        JProgressBar bar = new JProgressBar(0, words.get().size());
         bar.setStringPainted(true);
         summary.add(bar, BorderLayout.CENTER);
 
@@ -43,16 +46,22 @@ public final class WaitLingoToolWindowFactory implements ToolWindowFactory {
         JBTextField search = new JBTextField();
         search.getEmptyText().setText("Search word, translation or tag");
         Runnable refresh = () -> {
+            int currentCount = progress.personalTranslations.size();
+            if (currentCount != personalWordCount.get()) {
+                words.set(VocabularyService.loadDefaultWords());
+                personalWordCount.set(currentCount);
+                bar.setMaximum(words.get().size());
+            }
             summaryLabel.setText("🔥 " + progress.streak + " day streak · Today: "
                     + progress.todayKnown + "/" + progress.todaySeen + " known"
                     + " · This week: " + progress.weekKnown + "/" + progress.weekSeen
                     + (progress.pinnedWord == null || progress.pinnedWord.isBlank() ? "" : " · Pinned: " + progress.pinnedWord)
                     + (progress.snoozedUntil > System.currentTimeMillis() ? " · Snoozed" : ""));
             bar.setValue((int) progress.words.values().stream().filter(item -> item.correctCount > 0).count());
-            bar.setString(bar.getValue() + " / " + words.size() + " words practiced");
+            bar.setString(bar.getValue() + " / " + words.get().size() + " words practiced");
             String query = search.getText().trim().toLowerCase();
             model.clear();
-            words.stream().filter(word -> query.isBlank()
+            words.get().stream().filter(word -> query.isBlank()
                             || word.getWord().toLowerCase().contains(query)
                             || word.getTranslation("tr").toLowerCase().contains(query)
                             || word.getTags().stream().anyMatch(tag -> tag.contains(query)))

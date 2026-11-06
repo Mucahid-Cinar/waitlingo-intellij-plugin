@@ -51,6 +51,7 @@ public final class WordDetailsPopup {
             Consumer<WordEntry> favoriteAction,
             WaitLingoSettings.Data settings,
             List<WordEntry> wordPool,
+            boolean recallMode,
             Runnable popupClosedAction
     ) {
         AtomicReference<JBPopup> popupRef = new AtomicReference<>();
@@ -67,10 +68,22 @@ public final class WordDetailsPopup {
         boolean reverse = WaitLingoSettings.TR_TO_EN.equals(settings.direction);
         root.add(buildHeader(entry, favoriteAction, reverse));
         root.add(Box.createVerticalStrut(6));
-        root.add(buildTranslation(entry, reverse));
+        JLabel translation = buildTranslation(entry, reverse);
+        if (recallMode) {
+            translation.setText("Recall the meaning before revealing it.");
+        }
+        root.add(translation);
+        JButton revealButton = new PillButton("Show meaning", true);
+        if (recallMode) {
+            revealButton.setAlignmentX(Component.LEFT_ALIGNMENT);
+            root.add(Box.createVerticalStrut(10));
+            root.add(revealButton);
+        }
         root.add(Box.createVerticalStrut(16));
-        root.add(buildExampleCard(entry));
-        root.add(Box.createVerticalStrut(12));
+        if (!entry.getPrimaryExample().isBlank()) {
+            root.add(buildExampleCard(entry));
+            root.add(Box.createVerticalStrut(12));
+        }
 
         JPanel tags = buildTags(entry);
 
@@ -79,7 +92,16 @@ public final class WordDetailsPopup {
             root.add(Box.createVerticalStrut(16));
         }
 
-        root.add(buildFooter(popupRef, entry, knowWordAction, nextWordAction, againAction));
+        JPanel footer = buildFooter(popupRef, entry, knowWordAction, nextWordAction, againAction);
+        footer.setVisible(!recallMode);
+        root.add(footer);
+        revealButton.addActionListener(event -> {
+            translation.setText(reverse ? entry.getWord() : entry.getTranslation("tr"));
+            revealButton.setVisible(false);
+            footer.setVisible(true);
+            root.revalidate();
+            root.repaint();
+        });
 
         int preferredHeight = Math.max(340, root.getPreferredSize().height);
         root.setPreferredSize(new Dimension(POPUP_WIDTH, preferredHeight));
@@ -193,7 +215,7 @@ public final class WordDetailsPopup {
         card.setAlignmentX(Component.LEFT_ALIGNMENT);
         card.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
 
-        JLabel title = sectionTitle("Example sentence");
+        JLabel title = sectionTitle(entry.getTags().contains("personal") ? "From your code" : "Example sentence");
 
         JTextArea primary = textArea(
                 "“" + entry.getPrimaryExample() + "”",

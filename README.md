@@ -102,6 +102,7 @@ Open the **WaitLingo Tool Window** whenever you want to search the vocabulary, r
 |---|---|
 | Show another word | `Ctrl + Alt + W` |
 | Open details | Click the status bar card |
+| Learn a selected term | Select it in the editor, then choose **Learn with WaitLingo** from the context menu |
 | Quick actions | Right-click the status bar card |
 | Browse vocabulary and progress | WaitLingo Tool Window |
 | Personalize WaitLingo | Settings → Tools → WaitLingo |
@@ -116,6 +117,8 @@ idempotent,tekrarlandığında sonucu değişmeyen,The endpoint is idempotent.,d
 ```
 
 This is useful for team terminology, interview preparation, unfamiliar project language, or words you keep meeting in documentation.
+
+You can also select a word or identifier in the editor and choose **Learn with WaitLingo**. Known words are added to your favorites and shown immediately. For an unknown term, enter its Turkish meaning; WaitLingo stores the term and its code line locally for later review.
 
 ## Private by design
 
@@ -156,6 +159,16 @@ On Windows:
 
 ```powershell
 gradlew.bat clean test buildPlugin verifyPlugin
+```
+
+## IDE compatibility
+
+WaitLingo targets IntelliJ Platform 2023.2 (build 232) and newer. The plugin package has no upper IDE build limit. Plugin Verifier has checked the current package against IntelliJ IDEA 2023.2.6 and 2026.2.3; future releases should be verified as they become available.
+
+To check an installed IDE version locally, run:
+
+```powershell
+gradlew.bat runPluginVerifier '-PverifierIdePath=C:\path\to\IntelliJ IDEA'
 ```
 
 ## Contributing

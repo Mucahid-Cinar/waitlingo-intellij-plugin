@@ -41,6 +41,7 @@ import java.awt.LinearGradientPaint;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -66,7 +67,10 @@ public class WaitLingoWidget implements CustomStatusBarWidget, Disposable {
         project.getMessageBus().connect(this); // ties connection to widget lifecycle
         com.intellij.openapi.application.ApplicationManager.getApplication().getMessageBus().connect(this)
                 .subscribe(WaitLingoSettingsListener.TOPIC, this::reloadSettings);
-        project.getMessageBus().connect(this).subscribe(WaitLingoCommands.TOPIC, this::showNextWord);
+        project.getMessageBus().connect(this).subscribe(WaitLingoCommands.TOPIC, new WaitLingoCommands() {
+            @Override public void nextWord() { showNextWord(); }
+            @Override public void showWord(String id) { WaitLingoWidget.this.showWord(id); }
+        });
         project.getMessageBus().connect(this).subscribe(ProjectTaskListener.TOPIC, new ProjectTaskListener() {
             @Override public void started(@NotNull ProjectTaskContext context) {
                 buildActive = true;
@@ -82,6 +86,7 @@ public class WaitLingoWidget implements CustomStatusBarWidget, Disposable {
     }
 
     private void showNextWord() {
+        WordEntry previous = current;
         WaitLingoProgress progress = WaitLingoProgress.getInstance();
         if (progress.isSnoozed()) {
             component.setVisible(false);
@@ -99,15 +104,34 @@ public class WaitLingoWidget implements CustomStatusBarWidget, Disposable {
         } else if (++rotationCount % 5 == 0) {
             String dailyId = progress.dailyWord(eligible);
             List<WordEntry> finalEligible = eligible;
-            current = eligible.stream().filter(word -> word.id().equals(dailyId)).findFirst()
+            current = eligible.stream().filter(word -> word.id().equals(dailyId)
+                            && progress.progress(word.id()).dueAt <= System.currentTimeMillis()).findFirst()
                     .orElseGet(() -> LearningEngine.next(finalEligible, current, progress, editorContext()));
         } else {
             current = LearningEngine.next(eligible, current, progress, editorContext());
         }
         component.setSmartCompact(isAttentionMode());
         component.setBuildActive(buildActive);
-        component.setWord(current, WaitLingoSettings.getInstance().getState(), words);
+        if (previous != null && current != null && previous.id().equals(current.id())) {
+            updateAdaptiveDelay();
+            return;
+        }
+        component.setWord(current, WaitLingoSettings.getInstance().getState(), words, progress.hasSeen(current.id()));
         updateAdaptiveDelay();
+    }
+
+    private void showWord(String id) {
+        allWords = VocabularyService.loadDefaultWords();
+        words = LearningEngine.filter(allWords, WaitLingoSettings.getInstance().getState());
+        WordEntry selected = allWords.stream().filter(word -> word.id().equals(id)).findFirst().orElse(null);
+        if (selected == null) return;
+        current = selected;
+        component.setVisible(true);
+        component.setSmartCompact(isAttentionMode());
+        component.setBuildActive(buildActive);
+        component.setWord(selected, WaitLingoSettings.getInstance().getState(), words,
+                WaitLingoProgress.getInstance().hasSeen(id));
+        timer.restart();
     }
 
     private void markWordAsKnown(WordEntry entry) {
@@ -162,6 +186,7 @@ public class WaitLingoWidget implements CustomStatusBarWidget, Disposable {
     private void reloadSettings() {
         allWords = VocabularyService.loadDefaultWords();
         words = LearningEngine.filter(allWords, WaitLingoSettings.getInstance().getState());
+        current = null;
         if (timer != null) { timer.setDelay(delay()); timer.restart(); }
         showNextWord();
     }
@@ -205,6 +230,7 @@ public class WaitLingoWidget implements CustomStatusBarWidget, Disposable {
         private WaitLingoSettings.Data settings;
         private boolean hovered;
         private boolean hoverRevealed;
+        private boolean recallMode;
         private final Timer hoverTimer;
         private float transitionAlpha = 1f;
         private Timer transitionTimer;
@@ -251,6 +277,7 @@ public class WaitLingoWidget implements CustomStatusBarWidget, Disposable {
                                 favoriteAction,
                                 settings,
                                 wordPool,
+                                recallMode,
                                 timerResume
                         );
                     }
@@ -308,10 +335,12 @@ public class WaitLingoWidget implements CustomStatusBarWidget, Disposable {
             timerResume = resume;
         }
 
-        private void setWord(WordEntry wordEntry, WaitLingoSettings.Data settings, List<WordEntry> wordPool) {
+        private void setWord(WordEntry wordEntry, WaitLingoSettings.Data settings, List<WordEntry> wordPool,
+                             boolean recallMode) {
             this.wordEntry = wordEntry;
             this.settings = settings;
             this.wordPool = wordPool;
+            this.recallMode = recallMode;
             transitionAlpha = 0f;
             if (transitionTimer != null) transitionTimer.stop();
             transitionTimer = new Timer(25, event -> {
@@ -328,7 +357,9 @@ public class WaitLingoWidget implements CustomStatusBarWidget, Disposable {
             revalidate();
             String example = wordEntry.getPrimaryExample();
             String safeExample = example == null ? "" : example.replace("<", "&lt;").replace(">", "&gt;");
-            setToolTipText("<html><b>" + wordEntry.displayText() + "</b>"
+            setToolTipText(recallMode
+                    ? "Think of the meaning, then click to reveal it."
+                    : "<html><b>" + wordEntry.displayText() + "</b>"
                     + (safeExample.isBlank() ? "" : "<br>" + safeExample) + "</html>");
             repaint();
         }
@@ -337,17 +368,21 @@ public class WaitLingoWidget implements CustomStatusBarWidget, Disposable {
         protected void paintComponent(Graphics graphics) {
             super.paintComponent(graphics);
 
-            Graphics2D g2 = (Graphics2D) graphics.create();
+            int width = getWidth();
+            int height = getHeight();
+            if (width <= 4 || height <= 6) return;
+
+            BufferedImage badge = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g2 = badge.createGraphics();
 
             try {
-                g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, transitionAlpha));
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
                 int x = 2;
                 int y = 3;
-                int width = getWidth() - 4;
-                int height = getHeight() - 6;
+                width -= 4;
+                height -= 6;
                 int arc = 16;
 
                 Color backgroundTop = JBColor.namedColor(
@@ -426,8 +461,10 @@ public class WaitLingoWidget implements CustomStatusBarWidget, Disposable {
                 String brand = buildActive ? "WaitLingo • BUILD" : "WaitLingo";
                 boolean reverse = settings != null && WaitLingoSettings.TR_TO_EN.equals(settings.direction);
                 String word = wordEntry == null ? "" : (reverse ? wordEntry.getTranslation("tr") : wordEntry.getWord());
-                String translation = wordEntry == null ? "" : (reverse ? "?" : wordEntry.getTranslation("tr"));
-                if (settings != null && (settings.compactMode || smartCompact) && !hoverRevealed) translation = "";
+                String translation = wordEntry == null ? "" : (reverse ? wordEntry.getWord() : wordEntry.getTranslation("tr"));
+                if (recallMode) translation = "Recall?";
+                else if (settings != null && (settings.compactMode || smartCompact) && !hoverRevealed)
+                    translation = "";
 
                 int currentX = dotX + dotSize + 8;
 
@@ -464,6 +501,14 @@ public class WaitLingoWidget implements CustomStatusBarWidget, Disposable {
                 g2.drawString(clippedTranslation, currentX, baseline);
             } finally {
                 g2.dispose();
+            }
+
+            Graphics2D screen = (Graphics2D) graphics.create();
+            try {
+                screen.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, transitionAlpha));
+                screen.drawImage(badge, 0, 0, null);
+            } finally {
+                screen.dispose();
             }
         }
 

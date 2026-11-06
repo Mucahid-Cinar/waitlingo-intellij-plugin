@@ -13,10 +13,11 @@ public final class LearningEngine {
 
     public static List<WordEntry> filter(List<WordEntry> words, WaitLingoSettings.Data settings) {
         List<WordEntry> result = words.stream()
-                .filter(word -> settings.levels.isEmpty() || settings.levels.contains(word.getLevel()))
-                .filter(word -> settings.topics.isEmpty() || word.getTags().stream().anyMatch(settings.topics::contains))
-                .filter(word -> settings.developerWordsEnabled || !word.getTags().contains("developer"))
-                .filter(word -> matchesPack(word, settings.contentPack))
+                .filter(word -> word.getTags().contains("personal") ||
+                        ((settings.levels.isEmpty() || settings.levels.contains(word.getLevel()))
+                                && (settings.topics.isEmpty() || word.getTags().stream().anyMatch(settings.topics::contains))
+                                && (settings.developerWordsEnabled || !word.getTags().contains("developer"))
+                                && matchesPack(word, settings.contentPack)))
                 .toList();
         return result.isEmpty() ? words : result;
     }
@@ -45,12 +46,18 @@ public final class LearningEngine {
                 .filter(word -> current == null || !word.id().equals(current.id()))
                 .filter(word -> progress.progress(word.id()).dueAt <= now)
                 .toList());
-        if (due.isEmpty()) due.addAll(words);
+        if (due.isEmpty()) {
+            return current != null ? current : words.stream()
+                    .min(Comparator.comparingLong(word -> progress.progress(word.id()).dueAt))
+                    .orElse(null);
+        }
         String normalizedContext = context == null ? "" : context.toLowerCase();
         due.sort(Comparator
-                .comparingInt((WordEntry word) -> contextScore(word, normalizedContext)).reversed()
+                .comparingInt((WordEntry word) -> contextScore(word, normalizedContext) * 2
+                        + progress.progress(word.id()).wrongCount * 4
+                        + (progress.progress(word.id()).correctCount > 0 ? 2 : 0)).reversed()
                 .thenComparingLong(word -> progress.progress(word.id()).dueAt));
-        int candidateWindow = Math.min(12, due.size());
+        int candidateWindow = Math.min(3, due.size());
         return due.get(ThreadLocalRandom.current().nextInt(candidateWindow));
     }
 

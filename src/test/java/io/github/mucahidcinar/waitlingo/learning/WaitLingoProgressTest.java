@@ -6,6 +6,21 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class WaitLingoProgressTest {
+    @Test public void recallStartsAfterOpeningAWord() {
+        WaitLingoProgress progress = new WaitLingoProgress();
+        assertTrue(!progress.hasSeen("fallback"));
+        progress.recordSeen("fallback");
+        assertTrue(progress.hasSeen("fallback"));
+        assertTrue(!progress.hasSeen("another-word"));
+    }
+
+    @Test public void savesSelectedTermLocally() {
+        WaitLingoProgress progress = new WaitLingoProgress();
+        progress.savePersonalWord("Retry Count", "yeniden deneme sayısı", "int retryCount = 3;");
+        assertEquals("yeniden deneme sayısı", progress.getState().personalTranslations.get("retry count"));
+        assertEquals("int retryCount = 3;", progress.getState().personalExamples.get("retry count"));
+    }
+
     @Test public void knownAnswerSchedulesForLater() {
         WaitLingoProgress progress = new WaitLingoProgress();
         progress.recordKnown("resilient");

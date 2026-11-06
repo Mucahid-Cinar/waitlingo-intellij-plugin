@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import io.github.mucahidcinar.waitlingo.settings.WaitLingoSettings;
+import io.github.mucahidcinar.waitlingo.learning.WaitLingoProgress;
 
 public final class VocabularyService {
 
@@ -26,6 +27,15 @@ public final class VocabularyService {
         combined.addAll(loadResource("/vocabulary/developer-phrases-en-tr.json"));
         String customPath = WaitLingoSettings.getInstance().getState().customVocabularyPath;
         if (customPath != null && !customPath.isBlank()) combined.addAll(loadCustom(Path.of(customPath)));
+        WaitLingoProgress.Data progress = WaitLingoProgress.getInstance().getState();
+        progress.personalTranslations.forEach((word, translation) -> {
+            if (combined.stream().noneMatch(entry -> entry.id().equals(word))) {
+                String example = progress.personalExamples.getOrDefault(word, "");
+                combined.add(new WordEntry(word, translation,
+                        example.isBlank() ? List.of() : List.of(example),
+                        "personal", "", List.of("personal", "developer")));
+            }
+        });
         return combined.isEmpty() ? fallbackWords() : List.copyOf(combined);
     }
 
